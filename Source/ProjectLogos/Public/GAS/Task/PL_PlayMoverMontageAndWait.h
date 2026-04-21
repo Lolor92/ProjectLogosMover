@@ -6,9 +6,11 @@
 
 class UAnimInstance;
 class UAnimMontage;
-class UCharacterMoverComponent;
+class UMoverComponent;
 class UGameplayAbility;
 class USkeletalMeshComponent;
+class UPlayMoverMontageCallbackProxy;
+class UPL_MontageReplicationComponent;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FPLMoverMontageSimpleDelegate);
 
@@ -31,9 +33,14 @@ public:
 	FPLMoverMontageSimpleDelegate OnCancelled;
 
 	UFUNCTION(BlueprintCallable, Category="Ability|Tasks", meta=(DisplayName="Play Mover Montage And Wait",
-			HidePin="OwningAbility", DefaultToSelf="OwningAbility", BlueprintInternalUseOnly="true"))
-	static UPL_PlayMoverMontageAndWait* PlayMoverMontageAndWait(UGameplayAbility* OwningAbility, FName TaskInstanceName,
-		UCharacterMoverComponent* InMoverComponent, UAnimMontage* InMontage, float InPlayRate = 1.f, FName InStartSection = NAME_None,
+		HidePin="OwningAbility", DefaultToSelf="OwningAbility", BlueprintInternalUseOnly="true"))
+	static UPL_PlayMoverMontageAndWait* PlayMoverMontageAndWait(
+		UGameplayAbility* OwningAbility,
+		FName TaskInstanceName,
+		UMoverComponent* InMoverComponent,
+		UAnimMontage* InMontage,
+		float InPlayRate = 1.f,
+		FName InStartSection = NAME_None,
 		float InStartTimeSeconds = 0.f);
 
 	virtual void Activate() override;
@@ -44,9 +51,11 @@ protected:
 	void OnMontageBlendingOut(UAnimMontage* InMontage, bool bInterrupted);
 	void OnMontageEnded(UAnimMontage* InMontage, bool bInterrupted);
 	bool StopPlayingMontage();
-	
+	bool CreateMoverMontageProxy();
+	void StopReplicatedMontageIfNeeded();
+
 	UPROPERTY()
-	TObjectPtr<UCharacterMoverComponent> MoverComponent = nullptr;
+	TObjectPtr<UMoverComponent> MoverComponent = nullptr;
 
 	UPROPERTY()
 	TObjectPtr<UAnimMontage> Montage = nullptr;
@@ -57,9 +66,16 @@ protected:
 	UPROPERTY()
 	TObjectPtr<UAnimInstance> AnimInstance = nullptr;
 
+	UPROPERTY()
+	TObjectPtr<UPlayMoverMontageCallbackProxy> MoverMontageProxy = nullptr;
+
+	UPROPERTY()
+	TObjectPtr<UPL_MontageReplicationComponent> MontageReplicationComponent = nullptr;
+
 	FName StartSection = NAME_None;
 	float PlayRate = 1.f;
 	float StartTimeSeconds = 0.f;
 
 	bool bPlayedSuccessfully = false;
+	bool bReplicatedMontageStopped = false;
 };

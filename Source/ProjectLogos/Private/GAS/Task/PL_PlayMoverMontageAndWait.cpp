@@ -1,12 +1,22 @@
 ﻿#include "GAS/Task/PL_PlayMoverMontageAndWait.h"
+
 #include "Abilities/GameplayAbility.h"
 #include "Animation/AnimInstance.h"
 #include "Animation/AnimMontage.h"
+#include "Component/PL_MontageReplicationComponent.h"
 #include "Components/SkeletalMeshComponent.h"
+#include "GameFramework/Actor.h"
+#include "MoveLibrary/PlayMoverMontageCallbackProxy.h"
+#include "MoverComponent.h"
 
-UPL_PlayMoverMontageAndWait* UPL_PlayMoverMontageAndWait::PlayMoverMontageAndWait(UGameplayAbility* OwningAbility,
-	FName TaskInstanceName, UCharacterMoverComponent* InMoverComponent, UAnimMontage* InMontage, float InPlayRate,
-	FName InStartSection, float InStartTimeSeconds)
+UPL_PlayMoverMontageAndWait* UPL_PlayMoverMontageAndWait::PlayMoverMontageAndWait(
+	UGameplayAbility* OwningAbility,
+	FName TaskInstanceName,
+	UMoverComponent* InMoverComponent,
+	UAnimMontage* InMontage,
+	float InPlayRate,
+	FName InStartSection,
+	float InStartTimeSeconds)
 {
 	UPL_PlayMoverMontageAndWait* Task = NewAbilityTask<UPL_PlayMoverMontageAndWait>(OwningAbility, TaskInstanceName);
 
@@ -25,7 +35,6 @@ void UPL_PlayMoverMontageAndWait::Activate()
 
 	if (!Ability)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("PL_PlayMoverMontageAndWait: Activate failed, Ability is null."));
 		if (ShouldBroadcastAbilityTaskDelegates()) OnCancelled.Broadcast();
 		EndTask();
 		return;
@@ -34,15 +43,16 @@ void UPL_PlayMoverMontageAndWait::Activate()
 	const FGameplayAbilityActorInfo* ActorInfo = Ability->GetCurrentActorInfo();
 	if (!ActorInfo)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("PL_PlayMoverMontageAndWait: Activate failed, ActorInfo is null."));
 		if (ShouldBroadcastAbilityTaskDelegates()) OnCancelled.Broadcast();
 		EndTask();
 		return;
 	}
 
+	AActor* AvatarActor = ActorInfo->AvatarActor.Get();
+	MontageReplicationComponent = AvatarActor ? AvatarActor->FindComponentByClass<UPL_MontageReplicationComponent>() : nullptr;
+
 	if (!MoverComponent)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("PL_PlayMoverMontageAndWait: Activate failed, MoverComponent is null."));
 		if (ShouldBroadcastAbilityTaskDelegates()) OnCancelled.Broadcast();
 		EndTask();
 		return;
@@ -50,7 +60,6 @@ void UPL_PlayMoverMontageAndWait::Activate()
 
 	if (!Montage)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("PL_PlayMoverMontageAndWait: Activate failed, Montage is null."));
 		if (ShouldBroadcastAbilityTaskDelegates()) OnCancelled.Broadcast();
 		EndTask();
 		return;
@@ -59,7 +68,6 @@ void UPL_PlayMoverMontageAndWait::Activate()
 	MeshComponent = ActorInfo->SkeletalMeshComponent.Get();
 	if (!MeshComponent)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("PL_PlayMoverMontageAndWait: Activate failed, SkeletalMeshComponent is null."));
 		if (ShouldBroadcastAbilityTaskDelegates()) OnCancelled.Broadcast();
 		EndTask();
 		return;
@@ -68,21 +76,25 @@ void UPL_PlayMoverMontageAndWait::Activate()
 	AnimInstance = MeshComponent->GetAnimInstance();
 	if (!AnimInstance)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("PL_PlayMoverMontageAndWait: Activate failed, AnimInstance is null."));
 		if (ShouldBroadcastAbilityTaskDelegates()) OnCancelled.Broadcast();
 		EndTask();
 		return;
 	}
-	
-	const float PlayedLength = AnimInstance->Montage_Play(Montage, PlayRate,
-	EMontagePlayReturnType::MontageLength, StartTimeSeconds, false);
 
-	if (PlayedLength <= 0.f)
+	if (!CreateMoverMontageProxy())
 	{
-		UE_LOG(LogTemp, Warning, TEXT("PL_PlayMoverMontageAndWait: Activate failed, Montage_Play failed."));
 		if (ShouldBroadcastAbilityTaskDelegates()) OnCancelled.Broadcast();
 		EndTask();
 		return;
+	}
+
+	if (ActorInfo->IsNetAuthority() && MontageReplicationComponent)
+	{
+		MontageReplicationComponent->StartReplicatedMontage(
+			Montage,
+			PlayRate,
+			StartTimeSeconds,
+			StartSection);
 	}
 
 	FOnMontageBlendingOutStarted BlendOutDelegate;
@@ -93,16 +105,12 @@ void UPL_PlayMoverMontageAndWait::Activate()
 	EndDelegate.BindUObject(this, &UPL_PlayMoverMontageAndWait::OnMontageEnded);
 	AnimInstance->Montage_SetEndDelegate(EndDelegate, Montage);
 
-	if (StartSection != NAME_None)
-	{
-		AnimInstance->Montage_JumpToSection(StartSection, Montage);
-	}
-
 	bPlayedSuccessfully = true;
 }
 
 void UPL_PlayMoverMontageAndWait::ExternalCancel()
 {
+	StopReplicatedMontageIfNeeded();
 	StopPlayingMontage();
 
 	if (ShouldBroadcastAbilityTaskDelegates())
@@ -115,6 +123,8 @@ void UPL_PlayMoverMontageAndWait::ExternalCancel()
 
 void UPL_PlayMoverMontageAndWait::OnDestroy(bool bInOwnerFinished)
 {
+	StopReplicatedMontageIfNeeded();
+
 	if (AnimInstance && Montage)
 	{
 		FOnMontageBlendingOutStarted EmptyBlendOutDelegate;
@@ -130,7 +140,6 @@ void UPL_PlayMoverMontageAndWait::OnDestroy(bool bInOwnerFinished)
 void UPL_PlayMoverMontageAndWait::OnMontageBlendingOut(UAnimMontage* InMontage, bool bInterrupted)
 {
 	if (InMontage != Montage) return;
-
 	if (!ShouldBroadcastAbilityTaskDelegates()) return;
 
 	if (bInterrupted)
@@ -144,7 +153,12 @@ void UPL_PlayMoverMontageAndWait::OnMontageBlendingOut(UAnimMontage* InMontage, 
 
 void UPL_PlayMoverMontageAndWait::OnMontageEnded(UAnimMontage* InMontage, bool bInterrupted)
 {
-	if (InMontage != Montage) return;
+	if (InMontage != Montage)
+	{
+		return;
+	}
+
+	StopReplicatedMontageIfNeeded();
 
 	if (!ShouldBroadcastAbilityTaskDelegates())
 	{
@@ -164,7 +178,39 @@ bool UPL_PlayMoverMontageAndWait::StopPlayingMontage()
 {
 	if (!AnimInstance || !Montage) return false;
 	if (!AnimInstance->Montage_IsPlaying(Montage)) return false;
-	
+
 	AnimInstance->Montage_Stop(Montage->GetDefaultBlendOutTime(), Montage);
 	return true;
+}
+
+bool UPL_PlayMoverMontageAndWait::CreateMoverMontageProxy()
+{
+	MoverMontageProxy = UPlayMoverMontageCallbackProxy::CreateProxyObjectForPlayMoverMontage(
+		MoverComponent,
+		Montage,
+		PlayRate,
+		StartTimeSeconds,
+		StartSection);
+
+	if (!MoverMontageProxy) return false;
+	if (!AnimInstance->GetActiveInstanceForMontage(Montage))
+	{
+		MoverMontageProxy = nullptr;
+		return false;
+	}
+
+	return true;
+}
+
+void UPL_PlayMoverMontageAndWait::StopReplicatedMontageIfNeeded()
+{
+	if (bReplicatedMontageStopped) return;
+	if (!Ability) return;
+
+	const FGameplayAbilityActorInfo* ActorInfo = Ability->GetCurrentActorInfo();
+	if (!ActorInfo || !ActorInfo->IsNetAuthority()) return;
+	if (!MontageReplicationComponent) return;
+
+	MontageReplicationComponent->StopReplicatedMontage();
+	bReplicatedMontageStopped = true;
 }
