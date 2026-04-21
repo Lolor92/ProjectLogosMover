@@ -1,11 +1,12 @@
 ﻿#include "Component/PL_MontageReplicationComponent.h"
-
 #include "Animation/AnimInstance.h"
 #include "Animation/AnimMontage.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "GameFramework/Actor.h"
 #include "MoverComponent.h"
 #include "Net/UnrealNetwork.h"
+
+#include "Combat/Components/Runtime/PL_LocalPredictedReactionRuntime.h"
 
 UPL_MontageReplicationComponent::UPL_MontageReplicationComponent()
 {
@@ -167,6 +168,18 @@ void UPL_MontageReplicationComponent::OnRep_RepMontageState()
 	if (!RepMontageState.Montage) return;
 	if (!CachedMoverComponent) return;
 	if (RepMontageState.StartSimFrame == INDEX_NONE) return;
+	
+	// for the client hit predition stuff
+	if (UPL_LocalPredictedReactionRuntime* Runtime = GetWorld()->GetSubsystem<UPL_LocalPredictedReactionRuntime>())
+	{
+		if (Runtime->BeginReconcileMatchingPredictedReaction(
+			OwnerActor,
+			RepMontageState.Montage,
+			RepMontageState.StartSimFrame))
+		{
+			return;
+		}
+	}
 
 	const FMoverTimeStep& TimeStep = CachedMoverComponent->GetLastTimeStep();
 

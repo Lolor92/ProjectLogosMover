@@ -4,6 +4,7 @@
 #include "PL_HitWindowTypes.generated.h"
 
 class UGameplayEffect;
+class UAnimMontage;
 
 UENUM(BlueprintType)
 enum class EPLHitDetectionShapeType : uint8
@@ -81,4 +82,7 @@ struct FPLHitWindowSettings
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Hit Detection|Effects",
 		meta = (TitleProperty = "GameplayEffectClass"))
 	TArray<FPLHitWindowGameplayEffect> GameplayEffectsToApply;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Hit Detection|Prediction")
+	TObjectPtr<UAnimMontage> PredictedReactionMontage = nullptr;
 };
