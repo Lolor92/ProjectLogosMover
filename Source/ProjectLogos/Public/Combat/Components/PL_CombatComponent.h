@@ -10,7 +10,6 @@ class APL_BasePawn;
 class UAbilitySystemComponent;
 class UAnimNotifyState;
 class USkeletalMeshComponent;
-class UPlayMoverMontageCallbackProxy;
 
 USTRUCT()
 struct FPLActiveHitDetectionWindow
@@ -46,9 +45,8 @@ class PROJECTLOGOS_API UPL_CombatComponent : public UActorComponent
 
 public:
 	UPL_CombatComponent();
-	
-	virtual void BeginPlay() override;
 
+	virtual void BeginPlay() override;
 	virtual void TickComponent(
 		float DeltaTime,
 		ELevelTick TickType,
@@ -80,18 +78,7 @@ private:
 
 	FTransform GetHitTraceWorldTransform() const;
 	void TickHitDetectionWindow();
-	
 	void ApplyHitWindowEffectsToActor(AActor* HitActor);
-	
-	void PlayPredictedHitReaction(AActor* HitActor);
-	
-	UFUNCTION(BlueprintCallable, Category="Combat|Debug")
-	bool DebugPlayPredictedMoverReaction(AActor* HitActor, UAnimMontage* ReactionMontage);
-	
-	bool TryStartPredictedMoverHitReaction(AActor* HitActor);
-
-	UPROPERTY()
-	TArray<TObjectPtr<UPlayMoverMontageCallbackProxy>> ActivePredictedReactionProxies;
 
 	UPROPERTY()
 	TObjectPtr<APL_BasePawn> OwningPawn = nullptr;
