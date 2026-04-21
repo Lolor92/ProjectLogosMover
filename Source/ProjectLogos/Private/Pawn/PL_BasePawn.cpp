@@ -16,7 +16,7 @@ APL_BasePawn::APL_BasePawn()
 {
 	PrimaryActorTick.bCanEverTick = false;
 	SetReplicates(true);
-	// SetReplicatingMovement(false);
+	SetReplicatingMovement(false);
 
 	CharacterMoverComponent = CreateDefaultSubobject<UCharacterMoverComponent>(TEXT("CharacterMoverComponent"));
 	CombatComponent = CreateDefaultSubobject<UPL_CombatComponent>(TEXT("CombatComponent"));
@@ -101,9 +101,6 @@ void APL_BasePawn::PostInitializeComponents()
 	if (MeshComponent)
 	{
 		CharacterMoverComponent->SetPrimaryVisualComponent(MeshComponent.Get());
-
-		// Set this in editor if you prefer, but the idea is:
-		// Smoothing Mode = Visual Component Offset
 	}
 }
 

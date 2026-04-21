@@ -1,0 +1,65 @@
+﻿#pragma once
+
+#include "CoreMinimal.h"
+#include "Abilities/Tasks/AbilityTask.h"
+#include "PL_PlayMoverMontageAndWait.generated.h"
+
+class UAnimInstance;
+class UAnimMontage;
+class UCharacterMoverComponent;
+class UGameplayAbility;
+class USkeletalMeshComponent;
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FPLMoverMontageSimpleDelegate);
+
+UCLASS()
+class PROJECTLOGOS_API UPL_PlayMoverMontageAndWait : public UAbilityTask
+{
+	GENERATED_BODY()
+
+public:
+	UPROPERTY(BlueprintAssignable)
+	FPLMoverMontageSimpleDelegate OnCompleted;
+
+	UPROPERTY(BlueprintAssignable)
+	FPLMoverMontageSimpleDelegate OnBlendOut;
+
+	UPROPERTY(BlueprintAssignable)
+	FPLMoverMontageSimpleDelegate OnInterrupted;
+
+	UPROPERTY(BlueprintAssignable)
+	FPLMoverMontageSimpleDelegate OnCancelled;
+
+	UFUNCTION(BlueprintCallable, Category="Ability|Tasks", meta=(DisplayName="Play Mover Montage And Wait",
+			HidePin="OwningAbility", DefaultToSelf="OwningAbility", BlueprintInternalUseOnly="true"))
+	static UPL_PlayMoverMontageAndWait* PlayMoverMontageAndWait(UGameplayAbility* OwningAbility, FName TaskInstanceName,
+		UCharacterMoverComponent* InMoverComponent, UAnimMontage* InMontage, float InPlayRate = 1.f, FName InStartSection = NAME_None,
+		float InStartTimeSeconds = 0.f);
+
+	virtual void Activate() override;
+	virtual void ExternalCancel() override;
+	virtual void OnDestroy(bool bInOwnerFinished) override;
+
+protected:
+	void OnMontageBlendingOut(UAnimMontage* InMontage, bool bInterrupted);
+	void OnMontageEnded(UAnimMontage* InMontage, bool bInterrupted);
+	bool StopPlayingMontage();
+	
+	UPROPERTY()
+	TObjectPtr<UCharacterMoverComponent> MoverComponent = nullptr;
+
+	UPROPERTY()
+	TObjectPtr<UAnimMontage> Montage = nullptr;
+
+	UPROPERTY()
+	TObjectPtr<USkeletalMeshComponent> MeshComponent = nullptr;
+
+	UPROPERTY()
+	TObjectPtr<UAnimInstance> AnimInstance = nullptr;
+
+	FName StartSection = NAME_None;
+	float PlayRate = 1.f;
+	float StartTimeSeconds = 0.f;
+
+	bool bPlayedSuccessfully = false;
+};

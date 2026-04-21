@@ -1,6 +1,5 @@
 #include "Pawn/PL_PlayerPawn.h"
 #include "Camera/CameraComponent.h"
-#include "Components/CapsuleComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "Input/PL_InputComponent.h"
 #include "Player/PL_PlayerState.h"
