@@ -32,14 +32,14 @@ void UPL_MontageReplicationComponent::EndPlay(const EEndPlayReason::Type EndPlay
 	Super::EndPlay(EndPlayReason);
 }
 
-void UPL_MontageReplicationComponent::StartReplicatedMontage(
+int32 UPL_MontageReplicationComponent::StartReplicatedMontage(
 	UAnimMontage* InMontage,
 	float InPlayRate,
 	float InStartTimeSeconds,
 	FName InStartSection)
 {
-	if (!GetOwner() || !GetOwner()->HasAuthority()) return;
-	if (!InMontage) return;
+	if (!GetOwner() || !GetOwner()->HasAuthority()) return INDEX_NONE;
+	if (!InMontage) return INDEX_NONE;
 
 	int32 StartFrame = CachedFinalizedSimFrame;
 
@@ -55,15 +55,64 @@ void UPL_MontageReplicationComponent::StartReplicatedMontage(
 	RepMontageState.StartSimFrame = StartFrame;
 	RepMontageState.Serial++;
 	RepMontageState.bIsPlaying = true;
+
+	return RepMontageState.Serial;
 }
 
-void UPL_MontageReplicationComponent::StopReplicatedMontage()
+void UPL_MontageReplicationComponent::StopReplicatedMontageIfCurrent(int32 ExpectedSerial)
 {
 	if (!GetOwner() || !GetOwner()->HasAuthority()) return;
+	if (ExpectedSerial == INDEX_NONE) return;
+	if (!RepMontageState.bIsPlaying) return;
+	if (RepMontageState.Serial != ExpectedSerial) return;
 
 	RepMontageState.StartSimFrame = INDEX_NONE;
 	RepMontageState.Serial++;
 	RepMontageState.bIsPlaying = false;
+
+	ClearActiveMontagePolicy();
+}
+
+bool UPL_MontageReplicationComponent::CanStartMontageWithPolicy(const FPLMontagePlayPolicy& NewPolicy) const
+{
+	if (!RepMontageState.bIsPlaying || !bHasActiveMontagePolicy)
+	{
+		return true;
+	}
+
+	if (!NewPolicy.bCanInterruptOthers)
+	{
+		return false;
+	}
+
+	if (!ActiveMontagePolicy.bCanBeInterrupted)
+	{
+		return false;
+	}
+
+	const bool bSameChannel =
+		!ActiveMontagePolicy.MontageChannel.IsValid() ||
+		!NewPolicy.MontageChannel.IsValid() ||
+		ActiveMontagePolicy.MontageChannel == NewPolicy.MontageChannel;
+
+	if (!bSameChannel)
+	{
+		return false;
+	}
+
+	return NewPolicy.InterruptPriority >= ActiveMontagePolicy.InterruptPriority;
+}
+
+void UPL_MontageReplicationComponent::SetActiveMontagePolicy(const FPLMontagePlayPolicy& InPolicy)
+{
+	ActiveMontagePolicy = InPolicy;
+	bHasActiveMontagePolicy = true;
+}
+
+void UPL_MontageReplicationComponent::ClearActiveMontagePolicy()
+{
+	ActiveMontagePolicy = FPLMontagePlayPolicy();
+	bHasActiveMontagePolicy = false;
 }
 
 void UPL_MontageReplicationComponent::HandleMoverPostFinalize(

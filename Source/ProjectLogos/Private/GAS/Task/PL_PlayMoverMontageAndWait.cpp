@@ -1,5 +1,4 @@
 ﻿#include "GAS/Task/PL_PlayMoverMontageAndWait.h"
-
 #include "Abilities/GameplayAbility.h"
 #include "Animation/AnimInstance.h"
 #include "Animation/AnimMontage.h"
@@ -16,7 +15,8 @@ UPL_PlayMoverMontageAndWait* UPL_PlayMoverMontageAndWait::PlayMoverMontageAndWai
 	UAnimMontage* InMontage,
 	float InPlayRate,
 	FName InStartSection,
-	float InStartTimeSeconds)
+	float InStartTimeSeconds,
+	FPLMontagePlayPolicy InPlayPolicy)
 {
 	UPL_PlayMoverMontageAndWait* Task = NewAbilityTask<UPL_PlayMoverMontageAndWait>(OwningAbility, TaskInstanceName);
 
@@ -25,6 +25,7 @@ UPL_PlayMoverMontageAndWait* UPL_PlayMoverMontageAndWait::PlayMoverMontageAndWai
 	Task->PlayRate = InPlayRate;
 	Task->StartSection = InStartSection;
 	Task->StartTimeSeconds = InStartTimeSeconds;
+	Task->PlayPolicy = InPlayPolicy;
 
 	return Task;
 }
@@ -50,6 +51,16 @@ void UPL_PlayMoverMontageAndWait::Activate()
 
 	AActor* AvatarActor = ActorInfo->AvatarActor.Get();
 	MontageReplicationComponent = AvatarActor ? AvatarActor->FindComponentByClass<UPL_MontageReplicationComponent>() : nullptr;
+	
+	if (ActorInfo->IsNetAuthority() && MontageReplicationComponent)
+	{
+		if (!MontageReplicationComponent->CanStartMontageWithPolicy(PlayPolicy))
+		{
+			if (ShouldBroadcastAbilityTaskDelegates()) OnCancelled.Broadcast();
+			EndTask();
+			return;
+		}
+	}
 
 	if (!MoverComponent)
 	{
@@ -90,7 +101,9 @@ void UPL_PlayMoverMontageAndWait::Activate()
 
 	if (ActorInfo->IsNetAuthority() && MontageReplicationComponent)
 	{
-		MontageReplicationComponent->StartReplicatedMontage(
+		MontageReplicationComponent->SetActiveMontagePolicy(PlayPolicy);
+
+		StartedRepMontageSerial = MontageReplicationComponent->StartReplicatedMontage(
 			Montage,
 			PlayRate,
 			StartTimeSeconds,
@@ -110,7 +123,7 @@ void UPL_PlayMoverMontageAndWait::Activate()
 
 void UPL_PlayMoverMontageAndWait::ExternalCancel()
 {
-	StopReplicatedMontageIfNeeded();
+	StopReplicatedMontage();
 	StopPlayingMontage();
 
 	if (ShouldBroadcastAbilityTaskDelegates())
@@ -123,7 +136,7 @@ void UPL_PlayMoverMontageAndWait::ExternalCancel()
 
 void UPL_PlayMoverMontageAndWait::OnDestroy(bool bInOwnerFinished)
 {
-	StopReplicatedMontageIfNeeded();
+	StopReplicatedMontage();
 
 	if (AnimInstance && Montage)
 	{
@@ -158,7 +171,7 @@ void UPL_PlayMoverMontageAndWait::OnMontageEnded(UAnimMontage* InMontage, bool b
 		return;
 	}
 
-	StopReplicatedMontageIfNeeded();
+	StopReplicatedMontage();
 
 	if (!ShouldBroadcastAbilityTaskDelegates())
 	{
@@ -202,7 +215,7 @@ bool UPL_PlayMoverMontageAndWait::CreateMoverMontageProxy()
 	return true;
 }
 
-void UPL_PlayMoverMontageAndWait::StopReplicatedMontageIfNeeded()
+void UPL_PlayMoverMontageAndWait::StopReplicatedMontage()
 {
 	if (bReplicatedMontageStopped) return;
 	if (!Ability) return;
@@ -211,6 +224,8 @@ void UPL_PlayMoverMontageAndWait::StopReplicatedMontageIfNeeded()
 	if (!ActorInfo || !ActorInfo->IsNetAuthority()) return;
 	if (!MontageReplicationComponent) return;
 
-	MontageReplicationComponent->StopReplicatedMontage();
+	MontageReplicationComponent->StopReplicatedMontageIfCurrent(StartedRepMontageSerial);
+
 	bReplicatedMontageStopped = true;
+	StartedRepMontageSerial = INDEX_NONE;
 }

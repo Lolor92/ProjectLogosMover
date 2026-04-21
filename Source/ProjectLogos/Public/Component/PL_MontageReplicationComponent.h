@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
+#include "Component/PL_MontagePlayPolicy.h"
 #include "PL_MontageReplicationComponent.generated.h"
 
 class UAnimMontage;
@@ -49,14 +50,18 @@ public:
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 	UFUNCTION(BlueprintCallable, Category="Montage Replication")
-	void StartReplicatedMontage(
+	int32 StartReplicatedMontage(
 		UAnimMontage* InMontage,
 		float InPlayRate = 1.f,
 		float InStartTimeSeconds = 0.f,
 		FName InStartSection = NAME_None);
 
 	UFUNCTION(BlueprintCallable, Category="Montage Replication")
-	void StopReplicatedMontage();
+	void StopReplicatedMontageIfCurrent(int32 ExpectedSerial);
+	
+	bool CanStartMontageWithPolicy(const FPLMontagePlayPolicy& NewPolicy) const;
+	void SetActiveMontagePolicy(const FPLMontagePlayPolicy& InPolicy);
+	void ClearActiveMontagePolicy();
 
 protected:
 	UFUNCTION()
@@ -64,6 +69,9 @@ protected:
 
 	void BindToMoverPostFinalize();
 	void UnbindFromMoverPostFinalize();
+	
+	FPLMontagePlayPolicy ActiveMontagePolicy;
+	bool bHasActiveMontagePolicy = false;
 
 	UPROPERTY()
 	TObjectPtr<UMoverComponent> CachedMoverComponent = nullptr;

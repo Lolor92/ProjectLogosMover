@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Abilities/Tasks/AbilityTask.h"
+#include "Component/PL_MontagePlayPolicy.h"
 #include "PL_PlayMoverMontageAndWait.generated.h"
 
 class UAnimInstance;
@@ -35,13 +36,14 @@ public:
 	UFUNCTION(BlueprintCallable, Category="Ability|Tasks", meta=(DisplayName="Play Mover Montage And Wait",
 		HidePin="OwningAbility", DefaultToSelf="OwningAbility", BlueprintInternalUseOnly="true"))
 	static UPL_PlayMoverMontageAndWait* PlayMoverMontageAndWait(
-		UGameplayAbility* OwningAbility,
-		FName TaskInstanceName,
-		UMoverComponent* InMoverComponent,
-		UAnimMontage* InMontage,
-		float InPlayRate = 1.f,
-		FName InStartSection = NAME_None,
-		float InStartTimeSeconds = 0.f);
+	UGameplayAbility* OwningAbility,
+	FName TaskInstanceName,
+	UMoverComponent* InMoverComponent,
+	UAnimMontage* InMontage,
+	float InPlayRate = 1.f,
+	FName InStartSection = NAME_None,
+	float InStartTimeSeconds = 0.f,
+	FPLMontagePlayPolicy InPlayPolicy = FPLMontagePlayPolicy());
 
 	virtual void Activate() override;
 	virtual void ExternalCancel() override;
@@ -52,7 +54,7 @@ protected:
 	void OnMontageEnded(UAnimMontage* InMontage, bool bInterrupted);
 	bool StopPlayingMontage();
 	bool CreateMoverMontageProxy();
-	void StopReplicatedMontageIfNeeded();
+	void StopReplicatedMontage();
 
 	UPROPERTY()
 	TObjectPtr<UMoverComponent> MoverComponent = nullptr;
@@ -75,7 +77,9 @@ protected:
 	FName StartSection = NAME_None;
 	float PlayRate = 1.f;
 	float StartTimeSeconds = 0.f;
+	FPLMontagePlayPolicy PlayPolicy;
 
 	bool bPlayedSuccessfully = false;
 	bool bReplicatedMontageStopped = false;
+	int32 StartedRepMontageSerial = INDEX_NONE;
 };
