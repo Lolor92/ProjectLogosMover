@@ -74,30 +74,15 @@ void UPL_MontageReplicationComponent::StopReplicatedMontageIfCurrent(int32 Expec
 
 bool UPL_MontageReplicationComponent::CanStartMontageWithPolicy(const FPLMontagePlayPolicy& NewPolicy) const
 {
-	if (!RepMontageState.bIsPlaying || !bHasActiveMontagePolicy)
-	{
-		return true;
-	}
+	if (!RepMontageState.bIsPlaying || !bHasActiveMontagePolicy) return true;
+	if (!NewPolicy.bCanInterruptOthers) return false;
+	if (!ActiveMontagePolicy.bCanBeInterrupted) return false;
 
-	if (!NewPolicy.bCanInterruptOthers)
-	{
-		return false;
-	}
-
-	if (!ActiveMontagePolicy.bCanBeInterrupted)
-	{
-		return false;
-	}
-
-	const bool bSameChannel =
-		!ActiveMontagePolicy.MontageChannel.IsValid() ||
+	const bool bSameChannel = !ActiveMontagePolicy.MontageChannel.IsValid() ||
 		!NewPolicy.MontageChannel.IsValid() ||
 		ActiveMontagePolicy.MontageChannel == NewPolicy.MontageChannel;
 
-	if (!bSameChannel)
-	{
-		return false;
-	}
+	if (!bSameChannel) return false;
 
 	return NewPolicy.InterruptPriority >= ActiveMontagePolicy.InterruptPriority;
 }
@@ -114,8 +99,7 @@ void UPL_MontageReplicationComponent::ClearActiveMontagePolicy()
 	bHasActiveMontagePolicy = false;
 }
 
-void UPL_MontageReplicationComponent::HandleMoverPostFinalize(
-	const FMoverSyncState& SyncState,
+void UPL_MontageReplicationComponent::HandleMoverPostFinalize(const FMoverSyncState& SyncState,
 	const FMoverAuxStateContext& AuxState)
 {
 	if (!CachedMoverComponent) return;
@@ -182,12 +166,8 @@ void UPL_MontageReplicationComponent::OnRep_RepMontageState()
 	MontagePosition += FramesSinceStart * StepSeconds * RepMontageState.PlayRate;
 	MontagePosition = FMath::Clamp(MontagePosition, 0.f, RepMontageState.Montage->GetPlayLength());
 
-	const float PlayedLength = AnimInstance->Montage_Play(
-		RepMontageState.Montage,
-		RepMontageState.PlayRate,
-		EMontagePlayReturnType::MontageLength,
-		MontagePosition,
-		false);
+	const float PlayedLength = AnimInstance->Montage_Play(RepMontageState.Montage, RepMontageState.PlayRate,
+		EMontagePlayReturnType::MontageLength, MontagePosition, false);
 
 	if (PlayedLength <= 0.f) return;
 

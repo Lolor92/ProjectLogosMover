@@ -8,15 +8,9 @@
 #include "MoveLibrary/PlayMoverMontageCallbackProxy.h"
 #include "MoverComponent.h"
 
-UPL_PlayMoverMontageAndWait* UPL_PlayMoverMontageAndWait::PlayMoverMontageAndWait(
-	UGameplayAbility* OwningAbility,
-	FName TaskInstanceName,
-	UMoverComponent* InMoverComponent,
-	UAnimMontage* InMontage,
-	float InPlayRate,
-	FName InStartSection,
-	float InStartTimeSeconds,
-	FPLMontagePlayPolicy InPlayPolicy)
+UPL_PlayMoverMontageAndWait* UPL_PlayMoverMontageAndWait::PlayMoverMontageAndWait(UGameplayAbility* OwningAbility,
+	FName TaskInstanceName, UMoverComponent* InMoverComponent, UAnimMontage* InMontage, float InPlayRate,
+	FName InStartSection, float InStartTimeSeconds, FPLMontagePlayPolicy InPlayPolicy)
 {
 	UPL_PlayMoverMontageAndWait* Task = NewAbilityTask<UPL_PlayMoverMontageAndWait>(OwningAbility, TaskInstanceName);
 
@@ -166,10 +160,7 @@ void UPL_PlayMoverMontageAndWait::OnMontageBlendingOut(UAnimMontage* InMontage, 
 
 void UPL_PlayMoverMontageAndWait::OnMontageEnded(UAnimMontage* InMontage, bool bInterrupted)
 {
-	if (InMontage != Montage)
-	{
-		return;
-	}
+	if (InMontage != Montage) return;
 
 	StopReplicatedMontage();
 
@@ -199,11 +190,7 @@ bool UPL_PlayMoverMontageAndWait::StopPlayingMontage()
 bool UPL_PlayMoverMontageAndWait::CreateMoverMontageProxy()
 {
 	MoverMontageProxy = UPlayMoverMontageCallbackProxy::CreateProxyObjectForPlayMoverMontage(
-		MoverComponent,
-		Montage,
-		PlayRate,
-		StartTimeSeconds,
-		StartSection);
+		MoverComponent, Montage, PlayRate, StartTimeSeconds, StartSection);
 
 	if (!MoverMontageProxy) return false;
 	if (!AnimInstance->GetActiveInstanceForMontage(Montage))

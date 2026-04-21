@@ -35,14 +35,9 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category="Ability|Tasks", meta=(DisplayName="Play Mover Montage And Wait",
 		HidePin="OwningAbility", DefaultToSelf="OwningAbility", BlueprintInternalUseOnly="true"))
-	static UPL_PlayMoverMontageAndWait* PlayMoverMontageAndWait(
-	UGameplayAbility* OwningAbility,
-	FName TaskInstanceName,
-	UMoverComponent* InMoverComponent,
-	UAnimMontage* InMontage,
-	float InPlayRate = 1.f,
-	FName InStartSection = NAME_None,
-	float InStartTimeSeconds = 0.f,
+	static UPL_PlayMoverMontageAndWait* PlayMoverMontageAndWait(UGameplayAbility* OwningAbility,
+	FName TaskInstanceName, UMoverComponent* InMoverComponent, UAnimMontage* InMontage,
+	float InPlayRate = 1.f, FName InStartSection = NAME_None, float InStartTimeSeconds = 0.f,
 	FPLMontagePlayPolicy InPlayPolicy = FPLMontagePlayPolicy());
 
 	virtual void Activate() override;

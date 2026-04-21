@@ -50,11 +50,8 @@ public:
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 	UFUNCTION(BlueprintCallable, Category="Montage Replication")
-	int32 StartReplicatedMontage(
-		UAnimMontage* InMontage,
-		float InPlayRate = 1.f,
-		float InStartTimeSeconds = 0.f,
-		FName InStartSection = NAME_None);
+	int32 StartReplicatedMontage(UAnimMontage* InMontage, float InPlayRate = 1.f,
+		float InStartTimeSeconds = 0.f, FName InStartSection = NAME_None);
 
 	UFUNCTION(BlueprintCallable, Category="Montage Replication")
 	void StopReplicatedMontageIfCurrent(int32 ExpectedSerial);
