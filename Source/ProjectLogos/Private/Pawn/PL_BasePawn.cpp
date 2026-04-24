@@ -1,5 +1,4 @@
 #include "Pawn/PL_BasePawn.h"
-
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemInterface.h"
 #include "AttributeSet.h"
@@ -17,7 +16,7 @@ APL_BasePawn::APL_BasePawn()
 	PrimaryActorTick.bCanEverTick = false;
 	SetReplicates(true);
 	SetReplicatingMovement(false);
-
+	
 	CharacterMoverComponent = CreateDefaultSubobject<UCharacterMoverComponent>(TEXT("CharacterMoverComponent"));
 	CombatComponent = CreateDefaultSubobject<UPL_CombatComponent>(TEXT("CombatComponent"));
 
@@ -83,25 +82,13 @@ UAttributeSet* APL_BasePawn::GetAttributeSet() const
 void APL_BasePawn::BeginPlay()
 {
 	Super::BeginPlay();
-
+	
 	ApplyConfiguredMovementSettings();
 }
 
 void APL_BasePawn::PostInitializeComponents()
 {
 	Super::PostInitializeComponents();
-
-	if (!CharacterMoverComponent) return;
-
-	if (CapsuleComponent)
-	{
-		CharacterMoverComponent->SetUpdatedComponent(CapsuleComponent.Get());
-	}
-
-	if (MeshComponent)
-	{
-		CharacterMoverComponent->SetPrimaryVisualComponent(MeshComponent.Get());
-	}
 }
 
 void APL_BasePawn::ProduceInput_Implementation(int32 SimTimeMs, FMoverInputCmdContext& InputCmdResult)
@@ -173,16 +160,5 @@ void APL_BasePawn::ClearAbilitySystemReferences()
 
 void APL_BasePawn::ApplyConfiguredMovementSettings()
 {
-	if (!MovementSettings || !CharacterMoverComponent) return;
-
-	UCommonLegacyMovementSettings* RuntimeMovementSettings =
-		CharacterMoverComponent->FindSharedSettings_Mutable<UCommonLegacyMovementSettings>();
-
-	if (!RuntimeMovementSettings) return;
 	
-	RuntimeMovementSettings->MaxSpeed = 400.f;
-	RuntimeMovementSettings->Acceleration = 4000.f;
-	RuntimeMovementSettings->Deceleration = 4000.f;
-	RuntimeMovementSettings->TurningRate = 720.f;
-	RuntimeMovementSettings->TurningBoost = 2.f;
 }

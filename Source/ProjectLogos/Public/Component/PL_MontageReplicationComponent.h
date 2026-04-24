@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
@@ -37,7 +37,7 @@ struct FPLRepMontageState
 	bool bIsPlaying = false;
 };
 
-UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
+UCLASS(HideDropdown, ClassGroup=(Custom))
 class PROJECTLOGOS_API UPL_MontageReplicationComponent : public UActorComponent
 {
 	GENERATED_BODY()

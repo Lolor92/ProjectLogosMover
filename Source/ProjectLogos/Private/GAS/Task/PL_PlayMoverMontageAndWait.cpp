@@ -93,17 +93,6 @@ void UPL_PlayMoverMontageAndWait::Activate()
 		return;
 	}
 
-	if (ActorInfo->IsNetAuthority() && MontageReplicationComponent)
-	{
-		MontageReplicationComponent->SetActiveMontagePolicy(PlayPolicy);
-
-		StartedRepMontageSerial = MontageReplicationComponent->StartReplicatedMontage(
-			Montage,
-			PlayRate,
-			StartTimeSeconds,
-			StartSection);
-	}
-
 	FOnMontageBlendingOutStarted BlendOutDelegate;
 	BlendOutDelegate.BindUObject(this, &UPL_PlayMoverMontageAndWait::OnMontageBlendingOut);
 	AnimInstance->Montage_SetBlendingOutDelegate(BlendOutDelegate, Montage);
@@ -209,10 +198,6 @@ void UPL_PlayMoverMontageAndWait::StopReplicatedMontage()
 
 	const FGameplayAbilityActorInfo* ActorInfo = Ability->GetCurrentActorInfo();
 	if (!ActorInfo || !ActorInfo->IsNetAuthority()) return;
-	if (!MontageReplicationComponent) return;
-
-	MontageReplicationComponent->StopReplicatedMontageIfCurrent(StartedRepMontageSerial);
-
 	bReplicatedMontageStopped = true;
 	StartedRepMontageSerial = INDEX_NONE;
 }

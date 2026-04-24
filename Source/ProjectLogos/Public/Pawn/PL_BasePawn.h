@@ -44,7 +44,7 @@ protected:
 
 	void ClearAbilitySystemReferences();
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Mover")
+	UPROPERTY(Transient, EditDefaultsOnly, BlueprintReadOnly, Category = "Mover")
 	TObjectPtr<UCharacterMoverComponent> CharacterMoverComponent = nullptr;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat")
