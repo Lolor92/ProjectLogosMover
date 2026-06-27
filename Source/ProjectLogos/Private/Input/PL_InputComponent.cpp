@@ -14,6 +14,8 @@
 #include "GameplayAbilitySpec.h"
 #include "GAS/Ability/PL_GameplayAbility.h"
 #include "Input/Tag/PL_InputTags.h"
+#include "InputAction.h"
+#include "InputMappingContext.h"
 #include "InputActionValue.h"
 #include "Pawn/PL_BasePawn.h"
 
@@ -210,7 +212,6 @@ void UPL_InputComponent::AddMappingContextsForLocalPlayer() const
 {
 	if (!InputConfig)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("PL_Input: InputConfig is null on %s."), *GetNameSafe(GetOwner()));
 		return;
 	}
 

@@ -18,7 +18,8 @@ public class ProjectLogos : ModuleRules
 			"GameplayTags",
 			"GameplayTasks",
 			"InputCore",
-			"Mover"
+			"Mover",
+			"MotionWarping"
 		});
 
 		PrivateDependencyModuleNames.AddRange(new string[] { });

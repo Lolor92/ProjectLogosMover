@@ -1,0 +1,40 @@
+{
+	"FileVersion": 3,
+	"Version": 1,
+	"VersionName": "1.0",
+	"FriendlyName": "SyncGASMover",
+	"Description": "Bridges Unreal Engine Gameplay Ability System montage playback with the Mover plugin using root-motion layered moves and replicated montage visuals.",
+	"Category": "Gameplay",
+	"CreatedBy": "WeirdReflection",
+	"CreatedByURL": "https://www.youtube.com/@ProjectLogos92",
+	"DocsURL": "https://docs.google.com/document/d/19UHAslRjKoSpNVqODR5DyVdt2H_MHKBd/edit?usp=sharing&ouid=103565549774908789429&rtpof=true&sd=true",
+	"MarketplaceURL": "com.epicgames.launcher://eu/Fab/product/3df7537d-0272-4af0-93ba-2f6995262f05",
+	"SupportURL": "https://discord.com/invite/PDck3vmC5C",
+	"EngineVersion": "5.6.0",
+	"CanContainContent": false,
+	"Installed": true,
+	"Modules": [
+		{
+			"Name": "SyncGASMover",
+			"Type": "Runtime",
+			"LoadingPhase": "Default",
+			"PlatformAllowList": [
+				"Win64"
+			]
+		}
+	],
+	"Plugins": [
+		{
+			"Name": "Mover",
+			"Enabled": true
+		},
+		{
+			"Name": "GameplayAbilities",
+			"Enabled": true
+		},
+		{
+			"Name": "MotionWarping",
+			"Enabled": true
+		}
+	]
+}

@@ -1,28 +1,24 @@
-#include "GAS/Task/PL_PlayMoverMontageAndWait.h"
+// Copyright 2026 WeirdReflection. All Rights Reserved.
 
+#include "Tasks/SGM_PlayMoverMontageAndWait.h"
 #include "Abilities/GameplayAbility.h"
 #include "Animation/AnimInstance.h"
 #include "Animation/AnimMontage.h"
-#include "Component/PL_MontageReplicationComponent.h"
+#include "Component/SGM_PawnComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "DefaultMovementSet/CharacterMoverComponent.h"
 #include "GameFramework/Actor.h"
-#include "GAS/Task/PL_ScaledAnimRootMotionLayeredMove.h"
 #include "MoverComponent.h"
-#include "Pawn/PL_BasePawn.h"
+#include "Tags/SGM_NativeTags.h"
+#include "Tasks/SGM_ScaledAnimRootMotionLayeredMove.h"
 
-UPL_PlayMoverMontageAndWait* UPL_PlayMoverMontageAndWait::PlayMoverMontageAndWait(
-	UGameplayAbility* OwningAbility,
-	FName TaskInstanceName,
-	UMoverComponent* InMoverComponent,
-	UAnimMontage* InMontage,
-	float InPlayRate,
-	FName InStartSection,
-	float InStartTimeSeconds,
-	float InRootMotionTranslationScale,
-	EPLRootMotionCollisionStopMode InRootMotionCollisionStopMode)
+USGM_PlayMoverMontageAndWait* USGM_PlayMoverMontageAndWait::PlayMoverMontageAndWait(UGameplayAbility* OwningAbility,
+	FName TaskInstanceName, UMoverComponent* InMoverComponent, UAnimMontage* InMontage, float InPlayRate,
+	FName InStartSection, float InStartTimeSeconds, float InRootMotionTranslationScale,
+	ESGMRootMotionCollisionStopMode InRootMotionCollisionStopMode)
 {
-	UPL_PlayMoverMontageAndWait* Task = NewAbilityTask<UPL_PlayMoverMontageAndWait>(OwningAbility, TaskInstanceName);
+	USGM_PlayMoverMontageAndWait* Task =
+		NewAbilityTask<USGM_PlayMoverMontageAndWait>(OwningAbility, TaskInstanceName);
 
 	Task->MoverComponent = InMoverComponent;
 	Task->Montage = InMontage;
@@ -35,13 +31,16 @@ UPL_PlayMoverMontageAndWait* UPL_PlayMoverMontageAndWait::PlayMoverMontageAndWai
 	return Task;
 }
 
-void UPL_PlayMoverMontageAndWait::Activate()
+void USGM_PlayMoverMontageAndWait::Activate()
 {
 	Super::Activate();
 
 	if (!Ability)
 	{
-		if (ShouldBroadcastAbilityTaskDelegates()) OnCancelled.Broadcast();
+		if (ShouldBroadcastAbilityTaskDelegates())
+		{
+			OnCancelled.Broadcast();
+		}
 		EndTask();
 		return;
 	}
@@ -49,33 +48,44 @@ void UPL_PlayMoverMontageAndWait::Activate()
 	const FGameplayAbilityActorInfo* ActorInfo = Ability->GetCurrentActorInfo();
 	if (!ActorInfo)
 	{
-		if (ShouldBroadcastAbilityTaskDelegates()) OnCancelled.Broadcast();
+		if (ShouldBroadcastAbilityTaskDelegates())
+		{
+			OnCancelled.Broadcast();
+		}
 		EndTask();
 		return;
 	}
 
 	AActor* AvatarActor = ActorInfo->AvatarActor.Get();
-	// MontageReplicationComponent = AvatarActor ? AvatarActor->FindComponentByClass<UPL_MontageReplicationComponent>() : nullptr;
+	PawnComponent = AvatarActor ? AvatarActor->FindComponentByClass<USGM_PawnComponent>() : nullptr;
 	ResolveMoverComponent(AvatarActor);
 
-	if (!MoverComponent)
+	if (!MoverComponent || !Montage)
 	{
-		if (ShouldBroadcastAbilityTaskDelegates()) OnCancelled.Broadcast();
+		if (ShouldBroadcastAbilityTaskDelegates())
+		{
+			OnCancelled.Broadcast();
+		}
 		EndTask();
 		return;
 	}
 
-	if (!Montage)
+	if (PawnComponent)
 	{
-		if (ShouldBroadcastAbilityTaskDelegates()) OnCancelled.Broadcast();
-		EndTask();
-		return;
+		MeshComponent = PawnComponent->GetMontageMeshComponent();
 	}
 
-	MeshComponent = ActorInfo->SkeletalMeshComponent.Get();
 	if (!MeshComponent)
 	{
-		if (ShouldBroadcastAbilityTaskDelegates()) OnCancelled.Broadcast();
+		MeshComponent = ActorInfo->SkeletalMeshComponent.Get();
+	}
+
+	if (!MeshComponent)
+	{
+		if (ShouldBroadcastAbilityTaskDelegates())
+		{
+			OnCancelled.Broadcast();
+		}
 		EndTask();
 		return;
 	}
@@ -83,40 +93,46 @@ void UPL_PlayMoverMontageAndWait::Activate()
 	AnimInstance = MeshComponent->GetAnimInstance();
 	if (!AnimInstance)
 	{
-		if (ShouldBroadcastAbilityTaskDelegates()) OnCancelled.Broadcast();
+		if (ShouldBroadcastAbilityTaskDelegates())
+		{
+			OnCancelled.Broadcast();
+		}
 		EndTask();
 		return;
 	}
 
 	if (!PlayScaledMoverMontage())
 	{
-		if (ShouldBroadcastAbilityTaskDelegates()) OnCancelled.Broadcast();
+		if (ShouldBroadcastAbilityTaskDelegates())
+		{
+			OnCancelled.Broadcast();
+		}
 		EndTask();
 		return;
 	}
 
-	// if (ActorInfo->IsNetAuthority() && MontageReplicationComponent)
-	// {
-	// 	MontageReplicationComponent->StartReplicatedMontage(
-	// 		Montage,
-	// 		PlayRate,
-	// 		StartTimeSeconds,
-	// 		StartSection,
-	// 		RootMotionTranslationScale);
-	// }
+	if (ActorInfo->IsNetAuthority() && PawnComponent)
+	{
+		PawnComponent->StartReplicatedMontage(
+			Montage,
+			PlayRate,
+			StartTimeSeconds,
+			StartSection,
+			RootMotionTranslationScale);
+	}
 
 	FOnMontageBlendingOutStarted BlendOutDelegate;
-	BlendOutDelegate.BindUObject(this, &UPL_PlayMoverMontageAndWait::OnMontageBlendingOut);
+	BlendOutDelegate.BindUObject(this, &USGM_PlayMoverMontageAndWait::OnMontageBlendingOut);
 	AnimInstance->Montage_SetBlendingOutDelegate(BlendOutDelegate, Montage);
 
 	FOnMontageEnded EndDelegate;
-	EndDelegate.BindUObject(this, &UPL_PlayMoverMontageAndWait::OnMontageEnded);
+	EndDelegate.BindUObject(this, &USGM_PlayMoverMontageAndWait::OnMontageEnded);
 	AnimInstance->Montage_SetEndDelegate(EndDelegate, Montage);
 
 	bPlayedSuccessfully = true;
 }
 
-void UPL_PlayMoverMontageAndWait::ExternalCancel()
+void USGM_PlayMoverMontageAndWait::ExternalCancel()
 {
 	StopReplicatedMontageIfNeeded();
 	StopPlayingMontage();
@@ -129,7 +145,7 @@ void UPL_PlayMoverMontageAndWait::ExternalCancel()
 	Super::ExternalCancel();
 }
 
-void UPL_PlayMoverMontageAndWait::OnDestroy(bool bInOwnerFinished)
+void USGM_PlayMoverMontageAndWait::OnDestroy(bool bInOwnerFinished)
 {
 	StopReplicatedMontageIfNeeded();
 
@@ -145,10 +161,17 @@ void UPL_PlayMoverMontageAndWait::OnDestroy(bool bInOwnerFinished)
 	Super::OnDestroy(bInOwnerFinished);
 }
 
-void UPL_PlayMoverMontageAndWait::OnMontageBlendingOut(UAnimMontage* InMontage, bool bInterrupted)
+void USGM_PlayMoverMontageAndWait::OnMontageBlendingOut(UAnimMontage* InMontage, bool bInterrupted)
 {
-	if (InMontage != Montage) return;
-	if (!ShouldBroadcastAbilityTaskDelegates()) return;
+	if (InMontage != Montage)
+	{
+		return;
+	}
+
+	if (!ShouldBroadcastAbilityTaskDelegates())
+	{
+		return;
+	}
 
 	if (bInterrupted)
 	{
@@ -159,7 +182,7 @@ void UPL_PlayMoverMontageAndWait::OnMontageBlendingOut(UAnimMontage* InMontage, 
 	OnBlendOut.Broadcast();
 }
 
-void UPL_PlayMoverMontageAndWait::OnMontageEnded(UAnimMontage* InMontage, bool bInterrupted)
+void USGM_PlayMoverMontageAndWait::OnMontageEnded(UAnimMontage* InMontage, bool bInterrupted)
 {
 	if (InMontage != Montage)
 	{
@@ -182,20 +205,30 @@ void UPL_PlayMoverMontageAndWait::OnMontageEnded(UAnimMontage* InMontage, bool b
 	EndTask();
 }
 
-bool UPL_PlayMoverMontageAndWait::StopPlayingMontage()
+bool USGM_PlayMoverMontageAndWait::StopPlayingMontage()
 {
-	if (!AnimInstance || !Montage) return false;
-	if (!AnimInstance->Montage_IsPlaying(Montage)) return false;
+	if (!AnimInstance || !Montage)
+	{
+		return false;
+	}
+
+	if (!AnimInstance->Montage_IsPlaying(Montage))
+	{
+		return false;
+	}
 
 	AnimInstance->Montage_Stop(Montage->GetDefaultBlendOutTime(), Montage);
 	return true;
 }
 
-bool UPL_PlayMoverMontageAndWait::PlayScaledMoverMontage()
+bool USGM_PlayMoverMontageAndWait::PlayScaledMoverMontage()
 {
 	const float MontageLength = AnimInstance->Montage_Play(Montage, PlayRate, EMontagePlayReturnType::MontageLength,
 		StartTimeSeconds, true);
-	if (MontageLength <= 0.f) return false;
+	if (MontageLength <= 0.f)
+	{
+		return false;
+	}
 
 	if (StartSection != NAME_None)
 	{
@@ -203,7 +236,10 @@ bool UPL_PlayMoverMontageAndWait::PlayScaledMoverMontage()
 	}
 
 	FAnimMontageInstance* MontageInstance = AnimInstance->GetActiveInstanceForMontage(Montage);
-	if (!MontageInstance) return false;
+	if (!MontageInstance)
+	{
+		return false;
+	}
 
 	if (PlayRate != 0.f && Montage->HasRootMotion())
 	{
@@ -214,15 +250,18 @@ bool UPL_PlayMoverMontageAndWait::PlayScaledMoverMontage()
 	return true;
 }
 
-void UPL_PlayMoverMontageAndWait::QueueScaledRootMotionMove(float StartingMontagePosition)
+void USGM_PlayMoverMontageAndWait::QueueScaledRootMotionMove(float StartingMontagePosition)
 {
-	TSharedPtr<FPL_ScaledAnimRootMotionLayeredMove> AnimRootMotionMove =
-		MakeShared<FPL_ScaledAnimRootMotionLayeredMove>();
+	MoverComponent->CancelFeaturesWithTag(TAG_SyncGASMover_RootMotion, true);
+
+	TSharedPtr<FSGM_ScaledAnimRootMotionLayeredMove> AnimRootMotionMove =
+		MakeShared<FSGM_ScaledAnimRootMotionLayeredMove>();
 	AnimRootMotionMove->MontageState.Montage = Montage;
 	AnimRootMotionMove->MontageState.PlayRate = PlayRate;
 	AnimRootMotionMove->MontageState.StartingMontagePosition = StartingMontagePosition;
 	AnimRootMotionMove->RootMotionTranslationScale = RootMotionTranslationScale;
 	AnimRootMotionMove->RootMotionCollisionStopMode = RootMotionCollisionStopMode;
+	AnimRootMotionMove->bIgnoreRetriggerCancellationWhileQueued = true;
 
 	float RemainingUnscaledMontageSeconds = 0.f;
 	if (PlayRate > 0.f)
@@ -239,16 +278,16 @@ void UPL_PlayMoverMontageAndWait::QueueScaledRootMotionMove(float StartingMontag
 	MoverComponent->QueueLayeredMove(AnimRootMotionMove);
 }
 
-void UPL_PlayMoverMontageAndWait::ResolveMoverComponent(AActor* AvatarActor)
+void USGM_PlayMoverMontageAndWait::ResolveMoverComponent(AActor* AvatarActor)
 {
 	if (MoverComponent)
 	{
 		return;
 	}
 
-	if (const APL_BasePawn* BasePawn = Cast<APL_BasePawn>(AvatarActor))
+	if (PawnComponent)
 	{
-		MoverComponent = BasePawn->GetCharacterMoverComponent();
+		MoverComponent = PawnComponent->GetCharacterMoverComponent();
 	}
 
 	if (!MoverComponent && AvatarActor)
@@ -256,15 +295,17 @@ void UPL_PlayMoverMontageAndWait::ResolveMoverComponent(AActor* AvatarActor)
 		MoverComponent = AvatarActor->FindComponentByClass<UMoverComponent>();
 	}
 }
-void UPL_PlayMoverMontageAndWait::StopReplicatedMontageIfNeeded()
+void USGM_PlayMoverMontageAndWait::StopReplicatedMontageIfNeeded()
 {
 	if (bReplicatedMontageStopped) return;
+
 	if (!Ability) return;
 
 	const FGameplayAbilityActorInfo* ActorInfo = Ability->GetCurrentActorInfo();
 	if (!ActorInfo || !ActorInfo->IsNetAuthority()) return;
-	// if (!MontageReplicationComponent) return;
-	//
-	// MontageReplicationComponent->StopReplicatedMontage();
+
+	if (!PawnComponent) return;
+
+	PawnComponent->StopReplicatedMontage();
 	bReplicatedMontageStopped = true;
 }

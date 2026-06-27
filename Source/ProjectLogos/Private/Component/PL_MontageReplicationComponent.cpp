@@ -1,4 +1,4 @@
-﻿#include "Component/PL_MontageReplicationComponent.h"
+#include "Component/PL_MontageReplicationComponent.h"
 #include "Animation/AnimInstance.h"
 #include "Animation/AnimMontage.h"
 #include "Components/SkeletalMeshComponent.h"
@@ -31,14 +31,15 @@ void UPL_MontageReplicationComponent::EndPlay(const EEndPlayReason::Type EndPlay
 	Super::EndPlay(EndPlayReason);
 }
 
-int32 UPL_MontageReplicationComponent::StartReplicatedMontage(
+void UPL_MontageReplicationComponent::StartReplicatedMontage(
 	UAnimMontage* InMontage,
 	float InPlayRate,
 	float InStartTimeSeconds,
-	FName InStartSection)
+	FName InStartSection,
+	float InRootMotionTranslationScale)
 {
-	if (!GetOwner() || !GetOwner()->HasAuthority()) return INDEX_NONE;
-	if (!InMontage) return INDEX_NONE;
+	if (!GetOwner() || !GetOwner()->HasAuthority()) return;
+	if (!InMontage) return;
 
 	int32 StartFrame = CachedFinalizedSimFrame;
 
@@ -49,57 +50,25 @@ int32 UPL_MontageReplicationComponent::StartReplicatedMontage(
 
 	RepMontageState.Montage = InMontage;
 	RepMontageState.PlayRate = InPlayRate;
+	RepMontageState.RootMotionTranslationScale = InRootMotionTranslationScale;
 	RepMontageState.StartMontageTimeSeconds = InStartTimeSeconds;
 	RepMontageState.StartSection = InStartSection;
 	RepMontageState.StartSimFrame = StartFrame;
 	RepMontageState.Serial++;
 	RepMontageState.bIsPlaying = true;
-
-	return RepMontageState.Serial;
 }
 
-void UPL_MontageReplicationComponent::StopReplicatedMontageIfCurrent(int32 ExpectedSerial)
+void UPL_MontageReplicationComponent::StopReplicatedMontage()
 {
 	if (!GetOwner() || !GetOwner()->HasAuthority()) return;
-	if (ExpectedSerial == INDEX_NONE) return;
-	if (!RepMontageState.bIsPlaying) return;
-	if (RepMontageState.Serial != ExpectedSerial) return;
 
 	RepMontageState.StartSimFrame = INDEX_NONE;
 	RepMontageState.Serial++;
 	RepMontageState.bIsPlaying = false;
-
-	ClearActiveMontagePolicy();
 }
 
-bool UPL_MontageReplicationComponent::CanStartMontageWithPolicy(const FPLMontagePlayPolicy& NewPolicy) const
-{
-	if (!RepMontageState.bIsPlaying || !bHasActiveMontagePolicy) return true;
-	if (!NewPolicy.bCanInterruptOthers) return false;
-	if (!ActiveMontagePolicy.bCanBeInterrupted) return false;
-
-	const bool bSameChannel = !ActiveMontagePolicy.MontageChannel.IsValid() ||
-		!NewPolicy.MontageChannel.IsValid() ||
-		ActiveMontagePolicy.MontageChannel == NewPolicy.MontageChannel;
-
-	if (!bSameChannel) return false;
-
-	return NewPolicy.InterruptPriority >= ActiveMontagePolicy.InterruptPriority;
-}
-
-void UPL_MontageReplicationComponent::SetActiveMontagePolicy(const FPLMontagePlayPolicy& InPolicy)
-{
-	ActiveMontagePolicy = InPolicy;
-	bHasActiveMontagePolicy = true;
-}
-
-void UPL_MontageReplicationComponent::ClearActiveMontagePolicy()
-{
-	ActiveMontagePolicy = FPLMontagePlayPolicy();
-	bHasActiveMontagePolicy = false;
-}
-
-void UPL_MontageReplicationComponent::HandleMoverPostFinalize(const FMoverSyncState& SyncState,
+void UPL_MontageReplicationComponent::HandleMoverPostFinalize(
+	const FMoverSyncState& SyncState,
 	const FMoverAuxStateContext& AuxState)
 {
 	if (!CachedMoverComponent) return;
@@ -166,8 +135,12 @@ void UPL_MontageReplicationComponent::OnRep_RepMontageState()
 	MontagePosition += FramesSinceStart * StepSeconds * RepMontageState.PlayRate;
 	MontagePosition = FMath::Clamp(MontagePosition, 0.f, RepMontageState.Montage->GetPlayLength());
 
-	const float PlayedLength = AnimInstance->Montage_Play(RepMontageState.Montage, RepMontageState.PlayRate,
-		EMontagePlayReturnType::MontageLength, MontagePosition, false);
+	const float PlayedLength = AnimInstance->Montage_Play(
+		RepMontageState.Montage,
+		RepMontageState.PlayRate,
+		EMontagePlayReturnType::MontageLength,
+		MontagePosition,
+		false);
 
 	if (PlayedLength <= 0.f) return;
 

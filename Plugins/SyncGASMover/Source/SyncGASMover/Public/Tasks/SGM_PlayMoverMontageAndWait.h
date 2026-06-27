@@ -1,9 +1,11 @@
+// Copyright 2026 WeirdReflection. All Rights Reserved.
+
 #pragma once
 
 #include "CoreMinimal.h"
 #include "Abilities/Tasks/AbilityTask.h"
-#include "GAS/Task/PL_ScaledAnimRootMotionLayeredMove.h"
-#include "PL_PlayMoverMontageAndWait.generated.h"
+#include "Tasks/SGM_ScaledAnimRootMotionLayeredMove.h"
+#include "SGM_PlayMoverMontageAndWait.generated.h"
 
 class UAnimInstance;
 class UAnimMontage;
@@ -11,41 +13,36 @@ class AActor;
 class UMoverComponent;
 class UGameplayAbility;
 class USkeletalMeshComponent;
-class UPL_MontageReplicationComponent;
+class USGM_PawnComponent;
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE(FPLMoverMontageSimpleDelegate);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FSGMMoverMontageSimpleDelegate);
 
 UCLASS()
-class PROJECTLOGOS_API UPL_PlayMoverMontageAndWait : public UAbilityTask
+class SYNCGASMOVER_API USGM_PlayMoverMontageAndWait : public UAbilityTask
 {
 	GENERATED_BODY()
 
 public:
 	UPROPERTY(BlueprintAssignable)
-	FPLMoverMontageSimpleDelegate OnCompleted;
+	FSGMMoverMontageSimpleDelegate OnCompleted;
 
 	UPROPERTY(BlueprintAssignable)
-	FPLMoverMontageSimpleDelegate OnBlendOut;
+	FSGMMoverMontageSimpleDelegate OnBlendOut;
 
 	UPROPERTY(BlueprintAssignable)
-	FPLMoverMontageSimpleDelegate OnInterrupted;
+	FSGMMoverMontageSimpleDelegate OnInterrupted;
 
 	UPROPERTY(BlueprintAssignable)
-	FPLMoverMontageSimpleDelegate OnCancelled;
+	FSGMMoverMontageSimpleDelegate OnCancelled;
 
 	UFUNCTION(BlueprintCallable, Category="Ability|Tasks", meta=(DisplayName="Play Mover Montage And Wait",
 		HidePin="OwningAbility", DefaultToSelf="OwningAbility", BlueprintInternalUseOnly="true",
 		AdvancedDisplay="InMoverComponent"))
-	static UPL_PlayMoverMontageAndWait* PlayMoverMontageAndWait(
-		UGameplayAbility* OwningAbility,
-		FName TaskInstanceName,
-		UMoverComponent* InMoverComponent = nullptr,
-		UAnimMontage* InMontage = nullptr,
-		float InPlayRate = 1.f,
-		FName InStartSection = NAME_None,
-		float InStartTimeSeconds = 0.f,
+	static USGM_PlayMoverMontageAndWait* PlayMoverMontageAndWait(UGameplayAbility* OwningAbility,
+		FName TaskInstanceName, UMoverComponent* InMoverComponent = nullptr, UAnimMontage* InMontage = nullptr,
+		float InPlayRate = 1.f, FName InStartSection = NAME_None, float InStartTimeSeconds = 0.f,
 		float InRootMotionTranslationScale = 1.f,
-		EPLRootMotionCollisionStopMode InRootMotionCollisionStopMode = EPLRootMotionCollisionStopMode::None);
+		ESGMRootMotionCollisionStopMode InRootMotionCollisionStopMode = ESGMRootMotionCollisionStopMode::None);
 
 	virtual void Activate() override;
 	virtual void ExternalCancel() override;
@@ -73,13 +70,13 @@ protected:
 	TObjectPtr<UAnimInstance> AnimInstance = nullptr;
 
 	UPROPERTY()
-	TObjectPtr<UPL_MontageReplicationComponent> MontageReplicationComponent = nullptr;
+	TObjectPtr<USGM_PawnComponent> PawnComponent = nullptr;
 
 	FName StartSection = NAME_None;
 	float PlayRate = 1.f;
 	float StartTimeSeconds = 0.f;
 	float RootMotionTranslationScale = 1.f;
-	EPLRootMotionCollisionStopMode RootMotionCollisionStopMode = EPLRootMotionCollisionStopMode::None;
+	ESGMRootMotionCollisionStopMode RootMotionCollisionStopMode = ESGMRootMotionCollisionStopMode::None;
 
 	bool bPlayedSuccessfully = false;
 	bool bReplicatedMontageStopped = false;
