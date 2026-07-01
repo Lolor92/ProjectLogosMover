@@ -7,6 +7,7 @@
 #include "DrawDebugHelpers.h"
 #include "Engine/World.h"
 #include "GameplayEffect.h"
+#include "Engine/OverlapResult.h"
 #include "Pawn/PL_BasePawn.h"
 
 UPL_CombatComponent::UPL_CombatComponent()
